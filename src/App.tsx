@@ -125,14 +125,17 @@ body{font-family:'Montserrat',Arial,sans-serif;font-weight:400;font-size:12px;le
     <div class="floral-border">❦</div><h2 class="section-title">HẸN GẶP BẠN TẠI NGÀY VUI</h2>
     <div class="countdown" id="countdown"><div><b>--</b><small>NGÀY</small></div><div><b>--</b><small>GIỜ</small></div><div><b>--</b><small>PHÚT</small></div><div><b>--</b><small>GIÂY</small></div></div>
   </section>
-  <section class="section guestbook fade" id="guestbook">
-    <h2 class="section-title">SỔ LƯU BÚT</h2><p class="small center soft">Để lại đôi lời yêu thương cho Minh & Trang nhé!</p>
-    <form class="form" id="wishForm"><input id="guestName" required maxlength="60" autocomplete="name" placeholder="Tên của bạn"><textarea id="guestWish" required maxlength="500" placeholder="Lời chúc của bạn..."></textarea><input class="honeypot" id="guestWebsite" name="website" tabindex="-1" autocomplete="off" aria-label="Để trống trường này"><button class="btn dark" id="sendWish" type="submit">GỬI LỜI CHÚC ♡</button></form>
-    <div class="guest-status" id="wishStatus" role="status" aria-live="polite">Đang tải lời chúc...</div>
-    <div class="wish-list" id="wishList"></div>
+  <section class="section fade" id="gift">
     <div class="floral-border">✿</div>
     <h2 class="section-title">PHONG BAO MỪNG CƯỚI</h2>
-    <button class="envelope" id="giftBtn" aria-label="Mở phong bao mừng cưới"><span class="back"></span><span class="left"></span><span class="right"></span><span class="front"></span><span class="flap"></span><span class="seal">M&T</span></button>
+    <button class="envelope" id="giftBtn" aria-label="Mở phong bao mừng cưới">
+      <span class="back"></span>
+      <span class="left"></span>
+      <span class="right"></span>
+      <span class="front"></span>
+      <span class="flap"></span>
+      <span class="seal">M&T</span>
+    </button>
     <p class="note center">Nhấn để mở</p>
   </section>
   <section class="closing fade"><div class="orn">❦</div><div class="title">Thank you<br>for being here</div><div class="heart">Vũ Minh & Thu Trang</div><p class="small soft">Hẹn gặp bạn vào ngày 28 tháng 10 năm 2026</p><div class="tag" style="margin-top:25px">WITH LOVE, ALWAYS.</div></section>
@@ -203,138 +206,7 @@ body{font-family:'Montserrat',Arial,sans-serif;font-weight:400;font-size:12px;le
     link.remove();
   };
 
-  /*
-   * CẤU HÌNH LƯU BÚT - thay hai dòng sau bằng URL / publishable key
-   * trong Supabase > Project Settings > API Keys.
-   * KHÔNG dùng secret key hoặc service_role ở trình duyệt.
-   *
-   * public/guestbook.json chỉ là dữ liệu khởi tạo/dự phòng (đọc);
-   * dữ liệu khách gửi thực sự được lưu vào Supabase.
-   */
-  const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_REPLACE_ME';
-  const isConnected = SUPABASE_URL.startsWith('https://') &&
-    !SUPABASE_URL.includes('YOUR_PROJECT') &&
-    SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_') &&
-    !SUPABASE_PUBLISHABLE_KEY.includes('REPLACE_ME');
-  const endpoint = SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/wedding_wishes';
-  const headers = { apikey: SUPABASE_PUBLISHABLE_KEY };
-  const form = $('#wishForm');
-  const sendButton = $('#sendWish');
-  const status = $('#wishStatus');
-  const wishList = $('#wishList');
-  let lastSubmission = 0;
-
-  function setStatus(message, tone) {
-    status.textContent = message;
-    status.className = 'guest-status' + (tone ? ' ' + tone : '');
-  }
-
-  function renderWishes(wishes) {
-    wishList.replaceChildren();
-    wishes.forEach(wish => {
-      if (!wish || typeof wish.guest_name !== 'string' || typeof wish.message !== 'string') return;
-      const card = document.createElement('article');
-      card.className = 'wish';
-      const name = document.createElement('strong');
-      name.textContent = wish.guest_name;
-      const body = document.createElement('p');
-      body.textContent = wish.message;
-      card.append(name, body);
-      if (wish.created_at) {
-        const date = new Date(wish.created_at);
-        if (!Number.isNaN(date.getTime())) {
-          const meta = document.createElement('time');
-          meta.className = 'wish-date';
-          meta.dateTime = wish.created_at;
-          meta.textContent = date.toLocaleDateString('vi-VN', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-          });
-          card.append(meta);
-        }
-      }
-      wishList.append(card);
-    });
-  }
-
-  async function loadWishes() {
-    if (!isConnected) {
-      try {
-        const response = await fetch('/guestbook.json', { cache: 'no-store' });
-        if (response.ok) {
-          const data = await response.json();
-          renderWishes(Array.isArray(data.wishes) ? data.wishes : []);
-        }
-      } catch (err) { console.warn('Không đọc được guestbook.json', err); }
-      sendButton.disabled = true;
-      setStatus('Sổ lưu bút chưa kết nối nơi lưu dữ liệu. Chủ thiệp vui lòng cấu hình Supabase trong App.tsx.', 'error');
-      return;
-    }
-    try {
-      const response = await fetch(endpoint +
-        '?select=id,guest_name,message,created_at&order=created_at.desc&limit=100',
-        { headers: headers, cache: 'no-store' });
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const wishes = await response.json();
-      if (!Array.isArray(wishes)) throw new Error('Dữ liệu không hợp lệ');
-      renderWishes(wishes);
-      setStatus(wishes.length
-        ? 'Đã có ' + wishes.length + ' lời chúc được lưu. Cảm ơn những tình cảm yêu thương!'
-        : 'Chưa có lời chúc nào. Bạn hãy là người đầu tiên nhé!', 'success');
-    } catch (err) {
-      console.error('Lỗi tải sổ lưu bút:', err);
-      setStatus('Chưa tải được lời chúc. Vui lòng thử tải lại trang sau ít phút.', 'error');
-    }
-  }
-
-  form.addEventListener('submit', async event => {
-    event.preventDefault();
-    if (!isConnected || sendButton.disabled) return;
-    if ($('#guestWebsite').value.trim()) return; // chống bot đơn giản
-    const guest_name = $('#guestName').value.trim();
-    const message = $('#guestWish').value.trim();
-    if (!guest_name || !message) {
-      setStatus('Vui lòng điền tên và lời chúc của bạn.', 'error');
-      return;
-    }
-    if (guest_name.length > 60 || message.length > 500) {
-      setStatus('Tên tối đa 60 ký tự, lời chúc tối đa 500 ký tự.', 'error');
-      return;
-    }
-    if (Date.now() - lastSubmission < 15000) {
-      setStatus('Bạn vừa gửi lời chúc. Vui lòng đợi một chút nhé!', 'error');
-      return;
-    }
-    sendButton.disabled = true;
-    sendButton.textContent = 'ĐANG LƯU...';
-    setStatus('Đang gửi lời chúc của bạn...');
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: Object.assign({}, headers, {
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        }),
-        body: JSON.stringify({ guest_name: guest_name, message: message })
-      });
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      lastSubmission = Date.now();
-      form.reset();
-      await loadWishes();
-      setStatus('Đã lưu lời chúc thành công! Minh & Trang xin cảm ơn bạn ♡', 'success');
-    } catch (err) {
-      console.error('Lỗi gửi lời chúc:', err);
-      setStatus('Không thể lưu lời chúc. Bạn hãy kiểm tra kết nối và thử lại nhé!', 'error');
-    } finally {
-      sendButton.textContent = 'GỬI LỜI CHÚC ♡';
-      sendButton.disabled = false;
-    }
-  });
-  loadWishes();
-  setInterval(() => {
-    if (isConnected && document.visibilityState === 'visible' && !sendButton.disabled) loadWishes();
-  }, 60000);
+ 
 
   const modal = $('#giftModal');
   $('#giftBtn').onclick = () => modal.classList.add('show');

@@ -4,7 +4,27 @@ import { useEffect } from "react";
  * Thiệp cưới Vũ Minh & Thu Trang – chỉ cần thay src/App.tsx.
  * Ảnh và guestbook.json được đặt trong thư mục public/ của dự án Vite.
  *
-
+ * Để bật sổ lưu bút chung trên Vercel:
+ * 1. Tạo project tại Supabase > SQL Editor, chạy đoạn SQL này một lần:
+ *
+ *    create table public.wedding_wishes (
+ *      id uuid primary key default gen_random_uuid(),
+ *      guest_name text not null check (char_length(btrim(guest_name)) between 1 and 60),
+ *      message text not null check (char_length(btrim(message)) between 1 and 500),
+ *      created_at timestamptz not null default now()
+ *    );
+ *    alter table public.wedding_wishes enable row level security;
+ *    grant select, insert on public.wedding_wishes to anon;
+ *    create policy "Guests can read wishes" on public.wedding_wishes
+ *      for select to anon using (true);
+ *    create policy "Guests can write wishes" on public.wedding_wishes
+ *      for insert to anon with check (true);
+ *
+ * 2. Tìm SUPABASE_URL và SUPABASE_PUBLISHABLE_KEY bên dưới để thay giá trị.
+ *    KHÔNG dùng secret key/service_role trong code frontend.
+ * 3. guestbook.json chỉ là dữ liệu khởi tạo/dự phòng; không thể ghi vào public/
+ *    khi chạy trên Vercel. Lời chúc mới lưu thật ở bảng Supabase phía trên.
+ */
 const INVITATION_HTML = String.raw`<!doctype html>
 <html lang="vi">
 <head>
@@ -105,7 +125,16 @@ body{font-family:'Montserrat',Arial,sans-serif;font-weight:400;font-size:12px;le
     <div class="floral-border">❦</div><h2 class="section-title">HẸN GẶP BẠN TẠI NGÀY VUI</h2>
     <div class="countdown" id="countdown"><div><b>--</b><small>NGÀY</small></div><div><b>--</b><small>GIỜ</small></div><div><b>--</b><small>PHÚT</small></div><div><b>--</b><small>GIÂY</small></div></div>
   </section>
- 
+  // <section class="section guestbook fade" id="guestbook">
+  //   <h2 class="section-title">SỔ LƯU BÚT</h2><p class="small center soft">Để lại đôi lời yêu thương cho Minh & Trang nhé!</p>
+  //   <form class="form" id="wishForm"><input id="guestName" required maxlength="60" autocomplete="name" placeholder="Tên của bạn"><textarea id="guestWish" required maxlength="500" placeholder="Lời chúc của bạn..."></textarea><input class="honeypot" id="guestWebsite" name="website" tabindex="-1" autocomplete="off" aria-label="Để trống trường này"><button class="btn dark" id="sendWish" type="submit">GỬI LỜI CHÚC ♡</button></form>
+  //   <div class="guest-status" id="wishStatus" role="status" aria-live="polite">Đang tải lời chúc...</div>
+  //   <div class="wish-list" id="wishList"></div>
+  //   <div class="floral-border">✿</div>
+  //   <h2 class="section-title">PHONG BAO MỪNG CƯỚI</h2>
+  //   <button class="envelope" id="giftBtn" aria-label="Mở phong bao mừng cưới"><span class="back"></span><span class="left"></span><span class="right"></span><span class="front"></span><span class="flap"></span><span class="seal">M&T</span></button>
+  //   <p class="note center">Nhấn để mở</p>
+  // </section>
   <section class="closing fade"><div class="orn">❦</div><div class="title">Thank you<br>for being here</div><div class="heart">Vũ Minh & Thu Trang</div><p class="small soft">Hẹn gặp bạn vào ngày 28 tháng 10 năm 2026</p><div class="tag" style="margin-top:25px">WITH LOVE, ALWAYS.</div></section>
 </main>
 <button class="float" id="upBtn" aria-label="Lên đầu trang">↑</button>
@@ -229,7 +258,36 @@ body{font-family:'Montserrat',Arial,sans-serif;font-weight:400;font-size:12px;le
     });
   }
 
-  
+  async function loadWishes() {
+    if (!isConnected) {
+      try {
+        const response = await fetch('/guestbook.json', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          renderWishes(Array.isArray(data.wishes) ? data.wishes : []);
+        }
+      } catch (err) { console.warn('Không đọc được guestbook.json', err); }
+      sendButton.disabled = true;
+      setStatus('Sổ lưu bút chưa kết nối nơi lưu dữ liệu. Chủ thiệp vui lòng cấu hình Supabase trong App.tsx.', 'error');
+      return;
+    }
+    try {
+      const response = await fetch(endpoint +
+        '?select=id,guest_name,message,created_at&order=created_at.desc&limit=100',
+        { headers: headers, cache: 'no-store' });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const wishes = await response.json();
+      if (!Array.isArray(wishes)) throw new Error('Dữ liệu không hợp lệ');
+      renderWishes(wishes);
+      setStatus(wishes.length
+        ? 'Đã có ' + wishes.length + ' lời chúc được lưu. Cảm ơn những tình cảm yêu thương!'
+        : 'Chưa có lời chúc nào. Bạn hãy là người đầu tiên nhé!', 'success');
+    } catch (err) {
+      console.error('Lỗi tải sổ lưu bút:', err);
+      setStatus('Chưa tải được lời chúc. Vui lòng thử tải lại trang sau ít phút.', 'error');
+    }
+  }
+
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (!isConnected || sendButton.disabled) return;

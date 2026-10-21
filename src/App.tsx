@@ -126,7 +126,10 @@ body{font-family:'Montserrat',Arial,sans-serif;font-weight:400;font-size:12px;le
     <div class="countdown" id="countdown"><div><b>--</b><small>NGÀY</small></div><div><b>--</b><small>GIỜ</small></div><div><b>--</b><small>PHÚT</small></div><div><b>--</b><small>GIÂY</small></div></div>
   </section>
   <section class="section guestbook fade" id="guestbook">
-    
+    <h2 class="section-title">SỔ LƯU BÚT</h2><p class="small center soft">Để lại đôi lời yêu thương cho Minh & Trang nhé!</p>
+    <form class="form" id="wishForm"><input id="guestName" required maxlength="60" autocomplete="name" placeholder="Tên của bạn"><textarea id="guestWish" required maxlength="500" placeholder="Lời chúc của bạn..."></textarea><input class="honeypot" id="guestWebsite" name="website" tabindex="-1" autocomplete="off" aria-label="Để trống trường này"><button class="btn dark" id="sendWish" type="submit">GỬI LỜI CHÚC ♡</button></form>
+    <div class="guest-status" id="wishStatus" role="status" aria-live="polite">Đang tải lời chúc...</div>
+    <div class="wish-list" id="wishList"></div>
     <div class="floral-border">✿</div>
     <h2 class="section-title">PHONG BAO MỪNG CƯỚI</h2>
     <button class="envelope" id="giftBtn" aria-label="Mở phong bao mừng cưới"><span class="back"></span><span class="left"></span><span class="right"></span><span class="front"></span><span class="flap"></span><span class="seal">M&T</span></button>

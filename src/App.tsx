@@ -1,4 +1,7 @@
-<!doctype html>
+import { useEffect } from "react";
+
+/** Wedding invitation as a self-contained HTML document. */
+const INVITATION_HTML = String.raw`<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
@@ -350,4 +353,23 @@
     })();
   </script>
 </body>
-</html>
+</html>`;
+
+const RESET_CSS = "html, body, #root { width: 100%; height: 100%; margin: 0 !important; padding: 0 !important; max-width: none !important; } html, body { overflow: hidden !important; } body { display: block !important; min-width: 320px; } #root { text-align: left !important; }";
+
+export default function App() {
+  useEffect(() => {
+    document.title = "Thiệp cưới Vũ Minh & Thu Trang — 28.10.2026";
+  }, []);
+
+  return (
+    <>
+      <style>{RESET_CSS}</style>
+      <iframe
+        title="Thiệp cưới Vũ Minh và Thu Trang"
+        srcDoc={INVITATION_HTML}
+        style={{ display: "block", width: "100%", height: "100dvh", border: 0 }}
+      />
+    </>
+  );
+}

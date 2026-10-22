@@ -1,30 +1,6 @@
 import { useEffect } from "react";
 
-/**
- * Thiệp cưới Vũ Minh & Thu Trang – chỉ cần thay src/App.tsx.
- * Ảnh và guestbook.json được đặt trong thư mục public/ của dự án Vite.
- *
- * Để bật sổ lưu bút chung trên Vercel:
- * 1. Tạo project tại Supabase > SQL Editor, chạy đoạn SQL này một lần:
- *
- *    create table public.wedding_wishes (
- *      id uuid primary key default gen_random_uuid(),
- *      guest_name text not null check (char_length(btrim(guest_name)) between 1 and 60),
- *      message text not null check (char_length(btrim(message)) between 1 and 500),
- *      created_at timestamptz not null default now()
- *    );
- *    alter table public.wedding_wishes enable row level security;
- *    grant select, insert on public.wedding_wishes to anon;
- *    create policy "Guests can read wishes" on public.wedding_wishes
- *      for select to anon using (true);
- *    create policy "Guests can write wishes" on public.wedding_wishes
- *      for insert to anon with check (true);
- *
- * 2. Tìm SUPABASE_URL và SUPABASE_PUBLISHABLE_KEY bên dưới để thay giá trị.
- *    KHÔNG dùng secret key/service_role trong code frontend.
- * 3. guestbook.json chỉ là dữ liệu khởi tạo/dự phòng; không thể ghi vào public/
- *    khi chạy trên Vercel. Lời chúc mới lưu thật ở bảng Supabase phía trên.
- */
+/** Thiệp cưới Vũ Minh & Thu Trang — chỉ cần thay src/App.tsx. */
 const INVITATION_HTML = String.raw`<!doctype html>
 <html lang="vi">
 <head>
@@ -64,9 +40,58 @@ body{font-family:'Montserrat',Arial,sans-serif;font-weight:400;font-size:12px;le
 .btn{font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:.03em;font-weight:600}
 @media(max-width:500px){.hero{padding-top:66px}.hero h1{font-size:49px;line-height:1.34}.hero .and{font-size:42px;height:35px}.hero .welcome{font-size:9px;letter-spacing:.2em}.section-title{font-size:14px}.names{font-size:36px}.event .big-time{font-size:49px}.closing .title{font-size:36px}}
 .guest-status{max-width:450px;margin:17px auto 4px;text-align:center;color:#597792;font-size:11px;line-height:1.8;min-height:20px}.guest-status.error{color:#a23b43}.guest-status.success{color:#316e5a}.wish-list:empty{margin:0}.wish{box-shadow:0 5px 21px #b2c6d61c}.wish-date{font-size:9px;color:#9aafc2;display:block;margin-top:8px}.guestbook .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}.guestbook .honeypot{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}.qr-image{display:block;width:min(265px,100%);max-height:330px;object-fit:contain;margin:16px auto 20px;border:1px solid #e0e8ee;border-radius:10px;background:white;padding:8px}.gift-description{line-height:1.8}
+/* Màn mở thiệp với hoa nhẹ, lấy cảm hứng từ mẫu tham chiếu. */
+body.cover-active{height:100dvh;overflow:hidden}
+.invitation-cover{position:fixed;inset:0;z-index:90;display:grid;place-items:center;isolation:isolate;overflow:hidden;padding:20px;background:radial-gradient(ellipse at 69% 82%,#5b7440 0%,transparent 65%),radial-gradient(ellipse at 25% 15%,#233e23 0%,transparent 63%),linear-gradient(145deg,#213f25,#486637);color:#294c2d}
+.invitation-cover:before{content:'';position:absolute;inset:-20%;background:radial-gradient(circle at 20% 74%,#ffffff0c,transparent 25%),radial-gradient(circle at 80% 22%,#ffffff0b,transparent 27%);animation:coverGlow 12s ease-in-out infinite alternate;pointer-events:none}
+.cover-flakes{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.cover-flake{position:absolute;top:-30px;display:block;color:#e7ecd5;line-height:1;opacity:.42;font-size:14px;animation:coverFloat linear infinite;user-select:none}
+.cover-card{width:min(600px,100%);min-height:430px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;isolation:isolate;padding:36px 30px 30px;background:radial-gradient(circle at 50% 30%,#ffffff 10%,#fffefb 46%,#f2f2e9 100%);border-radius:8px;box-shadow:0 20px 65px #0c220b72,0 0 0 1px #ffffff9a inset;animation:coverArrive .85s cubic-bezier(.2,.8,.2,1) both;text-align:center}
+.cover-card:before{content:'';position:absolute;inset:10px;border:1px solid #b9c5a44c;border-radius:3px;pointer-events:none}
+.cover-bouquet{position:absolute;z-index:-1;width:48%;height:103%;left:-6%;bottom:-8%;opacity:.63;filter:blur(.2px);pointer-events:none}
+.cover-bouquet.right{left:auto;right:-7%;transform:scaleX(-1);opacity:.70}
+.cover-seal{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;margin:-8px 0 17px;background:#285225;color:#fff;font-size:26px;box-shadow:0 6px 19px #203c2860;flex-shrink:0}
+.cover-label{font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:.36em;color:#70876e;margin:0 0 7px;font-weight:500}
+.cover-names{font-family:'Cormorant Garamond',serif;font-weight:400;font-size:clamp(38px,6vw,48px);line-height:1.02;margin:0;color:#2a542b;text-shadow:0 1px 1px #fff}
+.cover-names em{display:block;font-family:'Allura',cursive;font-size:32px;font-style:normal;line-height:1.05;margin:3px 0;color:#6a906d}
+.cover-rule{height:1px;width:110px;background:linear-gradient(90deg,transparent,#6f9567,transparent);margin:17px 0 13px}
+.cover-date{font-family:'Cormorant Garamond',serif;font-size:21px;letter-spacing:.025em;color:#557455;margin:0}
+.cover-invite{font-family:'Cormorant Garamond',serif;font-size:23px;color:#638061;margin:14px 0 18px}
+.cover-open{position:relative;background:#315c2d;border:1px solid #315c2d;color:#fff;border-radius:999px;padding:13px 36px;font-family:'Cormorant Garamond',serif;font-size:20px;line-height:1.05;box-shadow:0 6px 17px #1c431e42;transition:transform .3s,box-shadow .3s}
+.cover-open:hover{transform:translateY(-3px);box-shadow:0 10px 20px #1c431e55}
+.cover-open:focus-visible{outline:3px solid #a4c69b;outline-offset:4px}
+.cover-burst{position:absolute;z-index:8;pointer-events:none;color:var(--flower-color,#c5d9aa);font-size:var(--flower-size,19px);left:0;top:0;animation:flowerBurst 1.15s ease-out forwards}
+.invitation-cover.opening .cover-card{animation:coverCardAway .85s .17s ease-in forwards}
+.invitation-cover.opening{animation:coverAway .65s .65s ease-in forwards}
+@keyframes coverArrive{from{opacity:0;transform:translateY(26px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes coverFloat{0%{transform:translate3d(0,-20px,0) rotate(0)}100%{transform:translate3d(32px,110vh,0) rotate(420deg)}}
+@keyframes coverGlow{from{transform:scale(1)}to{transform:scale(1.12) rotate(4deg)}}
+@keyframes flowerBurst{0%{opacity:1;transform:translate(-50%,-50%) scale(.45) rotate(0)}70%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.15) rotate(var(--rot))}}
+@keyframes coverCardAway{to{opacity:0;transform:translateY(-60px) scale(1.1);filter:blur(12px)}}
+@keyframes coverAway{to{opacity:0;visibility:hidden}}
+@media(max-width:600px){.invitation-cover{padding:20px}.cover-card{min-height:430px;padding:32px 12px}.cover-bouquet{width:61%;left:-21%;opacity:.4}.cover-bouquet.right{right:-21%;opacity:.44}.cover-names{font-size:40px}.cover-seal{width:51px;height:51px}}
+@media(prefers-reduced-motion:reduce){.cover-card,.cover-flake,.invitation-cover:before{animation:none!important}.invitation-cover.opening,.invitation-cover.opening .cover-card{animation:none!important}.cover-burst{display:none}}
 </style>
 </head>
 <body>
+<div class="invitation-cover" id="invitationCover" role="dialog" aria-modal="true" aria-label="Mời mở thiệp cưới">
+  <div class="cover-flakes" id="coverFlakes" aria-hidden="true"></div>
+  <div class="cover-card">
+    <svg class="cover-bouquet" viewBox="0 0 260 420" aria-hidden="true"><defs>
+      <g id="leafspray" fill="none" stroke="#819d83" stroke-width="3" stroke-linecap="round"><path d="M7 414Q35 250 113 88M20 348Q113 268 167 160M37 296Q21 178 38 92M65 241Q141 195 195 72"/><g fill="#aebd9c" stroke="none" opacity=".7"><ellipse cx="76" cy="176" rx="11" ry="26" transform="rotate(40 76 176)"/><ellipse cx="91" cy="198" rx="10" ry="27" transform="rotate(-52 91 198)"/><ellipse cx="115" cy="139" rx="10" ry="26" transform="rotate(39 115 139)"/><ellipse cx="50" cy="257" rx="12" ry="29" transform="rotate(-45 50 257)"/><ellipse cx="133" cy="244" rx="12" ry="28" transform="rotate(44 133 244)"/><ellipse cx="35" cy="137" rx="10" ry="29" transform="rotate(-41 35 137)"/><ellipse cx="143" cy="110" rx="10" ry="27" transform="rotate(60 143 110)"/></g></g>
+      <g id="coverDaisy"><g fill="#fffdf3" stroke="#e6e6d9" stroke-width=".7"><ellipse cy="-19" rx="8" ry="18"/><ellipse cy="19" rx="8" ry="18"/><ellipse cx="-19" rx="18" ry="8"/><ellipse cx="19" rx="18" ry="8"/><ellipse cx="-14" cy="-14" rx="9" ry="17" transform="rotate(-45 -14 -14)"/><ellipse cx="14" cy="-14" rx="9" ry="17" transform="rotate(45 14 -14)"/><ellipse cx="-14" cy="14" rx="9" ry="17" transform="rotate(45 -14 14)"/><ellipse cx="14" cy="14" rx="9" ry="17" transform="rotate(-45 14 14)"/></g><circle r="9" fill="#e2c78e"/><circle r="5" fill="#c5ae74"/></g>
+      <g id="coverBlue"><g fill="#b7c8d6" opacity=".9"><circle cx="0" cy="-13" r="11"/><circle cx="13" cy="-5" r="11"/><circle cx="8" cy="12" r="11"/><circle cx="-9" cy="11" r="11"/><circle cx="-13" cy="-6" r="11"/></g><circle r="6" fill="#d8bd78"/></g>
+    </defs><use href="#leafspray"/><use href="#coverDaisy" transform="translate(107 137) scale(.95)"/><use href="#coverDaisy" transform="translate(47 247) scale(.86)"/><use href="#coverDaisy" transform="translate(169 161) scale(.72)"/><use href="#coverBlue" transform="translate(42 110) scale(1.05)"/><use href="#coverBlue" transform="translate(151 263) scale(.8)"/><use href="#coverBlue" transform="translate(201 79) scale(.72)"/></svg>
+    <svg class="cover-bouquet right" viewBox="0 0 260 420" aria-hidden="true"><use href="#leafspray"/><use href="#coverDaisy" transform="translate(107 137) scale(.95)"/><use href="#coverDaisy" transform="translate(47 247) scale(.86)"/><use href="#coverDaisy" transform="translate(169 161) scale(.72)"/><use href="#coverBlue" transform="translate(42 110) scale(1.05)"/><use href="#coverBlue" transform="translate(151 263) scale(.8)"/><use href="#coverBlue" transform="translate(201 79) scale(.72)"/></svg>
+    <div class="cover-seal" aria-hidden="true">♥</div>
+    <p class="cover-label">THE WEDDING OF</p>
+    <h2 class="cover-names">Vũ Minh <em>&</em> Thu Trang</h2>
+    <div class="cover-rule"></div>
+    <p class="cover-date">28 tháng 10, 2026</p>
+    <p class="cover-invite">Thân Mời</p>
+    <button type="button" class="cover-open" id="openInvitation">Mở thiệp</button>
+  </div>
+</div>
 <svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><defs>
 <linearGradient id="wall" x1="0" x2=".9" y1="0" y2="1"><stop stop-color="#fcfdff"/><stop offset=".52" stop-color="#d4e3ec"/><stop offset="1" stop-color="#a5bfce"/></linearGradient>
 <linearGradient id="slate" x1="0" x2="1"><stop stop-color="#829cb4"/><stop offset=".5" stop-color="#e1ecf2"/><stop offset="1" stop-color="#6e8aa3"/></linearGradient>
@@ -147,6 +172,55 @@ body{font-family:'Montserrat',Arial,sans-serif;font-weight:400;font-size:12px;le
   'use strict';
   const $ = selector => document.querySelector(selector);
   const petals = $('#petals');
+
+  // Hiệu ứng mở thiệp: hoa bay nhẹ và bung hoa khi nhấn nút.
+  const invitationCover = $('#invitationCover');
+  const coverFlakes = $('#coverFlakes');
+  const openInvitation = $('#openInvitation');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.body.classList.add('cover-active');
+  if (!reduceMotion) {
+    for (let i = 0; i < 20; i++) {
+      const flake = document.createElement('span');
+      flake.className = 'cover-flake';
+      flake.textContent = i % 3 === 0 ? '✻' : '✿';
+      flake.style.left = ((i * 47 + 9) % 100) + '%';
+      flake.style.fontSize = (9 + (i % 4) * 3) + 'px';
+      flake.style.animationDuration = (13 + i % 8) + 's';
+      flake.style.animationDelay = (-i * 1.15) + 's';
+      coverFlakes.append(flake);
+    }
+  }
+  openInvitation.onclick = () => {
+    if (openInvitation.disabled) return;
+    openInvitation.disabled = true;
+    if (!reduceMotion) {
+      const box = openInvitation.getBoundingClientRect();
+      const cx = box.left + box.width / 2;
+      const cy = box.top + box.height / 2;
+      for (let i = 0; i < 45; i++) {
+        const flower = document.createElement('span');
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 65 + Math.random() * 330;
+        flower.className = 'cover-burst';
+        flower.textContent = i % 3 === 0 ? '❀' : '✿';
+        flower.style.left = cx + 'px';
+        flower.style.top = cy + 'px';
+        flower.style.setProperty('--dx', Math.round(Math.cos(angle) * distance) + 'px');
+        flower.style.setProperty('--dy', Math.round(Math.sin(angle) * distance - 80) + 'px');
+        flower.style.setProperty('--rot', (Math.random() * 800 - 400) + 'deg');
+        flower.style.setProperty('--flower-size', (12 + Math.random() * 20) + 'px');
+        flower.style.setProperty('--flower-color', ['#f5f2e6','#c6d9b4','#b6cbd9','#f0d9a4'][i % 4]);
+        invitationCover.append(flower);
+      }
+    }
+    invitationCover.classList.add('opening');
+    window.setTimeout(() => {
+      invitationCover.remove();
+      document.body.classList.remove('cover-active');
+      window.scrollTo(0, 0);
+    }, reduceMotion ? 80 : 1380);
+  };
 
   for (let i = 0; i < 19; i++) {
     const petal = document.createElement('i');

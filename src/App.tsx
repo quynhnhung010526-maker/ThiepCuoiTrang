@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-/** Thiệp cưới Vũ Minh & Thu Trang — chỉ cần thay src/App.tsx. */
+/** Thiệp cưới Vũ Minh & Thu Trang  */
 const INVITATION_HTML = String.raw`<!doctype html>
 <html lang="vi">
 <head>
